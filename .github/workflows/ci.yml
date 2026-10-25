@@ -71,21 +71,22 @@ jobs:
           cd custom_components/soundboks
           zip -r "$GITHUB_WORKSPACE/soundboks.zip" . -x '__pycache__/*'
 
-      # The commits are on main, not in PRs, so GitHub's generated notes would be empty: use the
-      # section cz bump wrote to CHANGELOG.md
+      # Release description: the section cz bump wrote to CHANGELOG.md (direct commits to main),
+      # then GitHub's "What's Changed" (merged PRs, e.g. Dependabot's) and compare link. cz leaves
+      # ci:/chore: commits out, so the section can be blank; the generated part still fills it.
       - name: Extract release notes from CHANGELOG.md
         run: |
           awk -v header="## $GITHUB_REF_NAME " \
             'index($0, header) == 1 { found = 1; next } found && /^## / { exit } found' \
             CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "::error::no '## $GITHUB_REF_NAME' section in CHANGELOG.md"
-            exit 1
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            : > release-notes.md
           fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           body_path: release-notes.md
+          generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
           files: soundboks.zip
