@@ -14,4 +14,4 @@ IDLE_TIMEOUT = 30.0  # seconds a command keeps the link open
 # busy: keep the last state this long before showing it off (see docs/PROTOCOL.md)
 PRESENCE_GRACE = timedelta(minutes=5)
 
-PLATFORMS: list[Platform] = []
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER]

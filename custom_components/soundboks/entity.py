@@ -5,6 +5,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import SoundboksCoordinator
+from .protocol import Input
 
 
 class SoundboksEntity(CoordinatorEntity[SoundboksCoordinator]):
@@ -24,3 +25,18 @@ class SoundboksEntity(CoordinatorEntity[SoundboksCoordinator]):
     @property
     def available(self) -> bool:
         return self.coordinator.present and self.coordinator.data is not None
+
+
+INPUT_NAMES = {
+    Input.CHANNEL_1: "Channel 1",
+    Input.CHANNEL_2: "Channel 2",
+    Input.AUX: "AUX",
+    Input.BLUETOOTH: "Bluetooth",
+    Input.TEAMUP: "TeamUp",
+}
+
+
+def describe_inputs(inputs: Input) -> str | None:
+    """Active inputs as "AUX, Bluetooth", None when nothing plays."""
+    names = [name for flag, name in INPUT_NAMES.items() if flag in inputs]
+    return ", ".join(names) or None
