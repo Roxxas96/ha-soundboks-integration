@@ -7,9 +7,13 @@
       "connectable": true
     }
   ],
-  "codeowners": ["@Roxxas96"],
+  "codeowners": [
+    "@Roxxas96"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth_adapters"],
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
   "documentation": "https://github.com/Roxxas96/ha-soundboks-integration",
   "integration_type": "device",
   "iot_class": "local_polling",

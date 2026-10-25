@@ -62,6 +62,40 @@
     },
     "invalid_pin": {
       "message": "The speaker refused the PIN. Re-enter it from the integration's settings."
+    },
+    "custom_profile": {
+      "message": "Custom EQ can only be set from the SOUNDBOKS app for now."
+    }
+  },
+  "entity": {
+    "select": {
+      "sound_profile": {
+        "name": "Sound profile",
+        "state": {
+          "power": "Power",
+          "bass_plus": "Bass+",
+          "indoor": "Indoor",
+          "custom": "Custom"
+        }
+      },
+      "stereo_role": {
+        "name": "Stereo role",
+        "state": {
+          "mono": "Mono",
+          "left": "Left",
+          "right": "Right"
+        }
+      }
+    },
+    "sensor": {
+      "active_inputs": {
+        "name": "Active inputs"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Reboot"
+      }
     }
   }
 }
