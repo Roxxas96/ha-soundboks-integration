@@ -1,0 +1,2 @@
+# Pins a matching homeassistant release (2026.10.3) and the pytest plugins HA's tests use.
+pytest-homeassistant-custom-component==0.13.374

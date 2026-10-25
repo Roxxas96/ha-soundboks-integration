@@ -1,0 +1,4 @@
+# Words the default dictionary flags but that are correct here.
+[default.extend-words]
+# Home Assistant core object, passed to every integration function
+hass = "hass"

@@ -1,0 +1,14 @@
+[tools]
+python = "3.14.9"
+prek = "0.5.7"
+
+[env]
+# Creates and activates .venv on entering the repo; `pip install -r requirements-dev.txt` fills it.
+_.python.venv = { path = ".venv", create = true }
+
+[settings]
+experimental = true
+
+# `mise install` pulls every tool above at the pinned version — run it once after
+# cloning, then `prek install` to activate the git hooks. ruff, typos, gitleaks, actionlint and
+# commitizen are not here: prek fetches them itself from .pre-commit-config.yaml.

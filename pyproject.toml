@@ -1,0 +1,19 @@
+[project]
+name = "ha-soundboks-integration"
+version = "0.1.0"
+description = "Home Assistant integration for SOUNDBOKS speakers over Bluetooth LE"
+license = "MIT"
+requires-python = ">=3.14.2"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+# pyflakes/pycodestyle defaults, plus import sorting, bugbear, pyupgrade and async pitfalls
+extend-select = ["I", "B", "UP", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

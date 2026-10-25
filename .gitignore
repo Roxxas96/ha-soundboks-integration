@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+# Plan workspaces and visual brainstorming companion
+.superpowers/
+# Never commit the official app or anything decompiled from it
+apk/
+*.apk
+*.xapk
