@@ -1,4 +1,61 @@
 {
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Choose a speaker",
+        "description": "Speakers Home Assistant can hear right now. Close the SOUNDBOKS app first: the speaker accepts one connection at a time.",
+        "data": {
+          "address": "Speaker"
+        }
+      },
+      "bluetooth_confirm": {
+        "description": "Set up SOUNDBOKS {name}? Close the SOUNDBOKS app first: the speaker accepts one connection at a time."
+      },
+      "pin": {
+        "title": "Speaker PIN",
+        "description": "SOUNDBOKS {name} is protected by a PIN.",
+        "data": {
+          "pin": "PIN"
+        },
+        "data_description": {
+          "pin": "The 4-digit code set in the SOUNDBOKS app."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Speaker PIN",
+        "description": "{name} refused the saved PIN. Enter the current one.",
+        "data": {
+          "pin": "PIN"
+        },
+        "data_description": {
+          "pin": "The 4-digit code set in the SOUNDBOKS app."
+        }
+      },
+      "reconfigure": {
+        "title": "Speaker PIN",
+        "description": "Update the PIN for {name}. Leave it empty if the speaker no longer has one.",
+        "data": {
+          "pin": "PIN"
+        },
+        "data_description": {
+          "pin": "The 4-digit code set in the SOUNDBOKS app."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the speaker. Check it is on, nearby, and that no other app is connected to it.",
+      "invalid_pin": "The speaker refused this PIN.",
+      "invalid_pin_format": "A PIN is exactly 4 digits."
+    },
+    "abort": {
+      "already_configured": "This speaker is already set up.",
+      "no_devices_found": "No SOUNDBOKS speaker found. Check it is on and nearby, and that no other app is connected to it.",
+      "not_supported": "This SOUNDBOKS model is not supported yet.",
+      "reauth_successful": "PIN updated.",
+      "reconfigure_successful": "PIN updated."
+    }
+  },
   "exceptions": {
     "unreachable": {
       "message": "Could not reach the speaker. It may be off, out of range, or another app may be connected."
