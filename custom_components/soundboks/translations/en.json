@@ -1,0 +1,10 @@
+{
+  "exceptions": {
+    "unreachable": {
+      "message": "Could not reach the speaker. It may be off, out of range, or another app may be connected."
+    },
+    "invalid_pin": {
+      "message": "The speaker refused the PIN. Re-enter it from the integration's settings."
+    }
+  }
+}

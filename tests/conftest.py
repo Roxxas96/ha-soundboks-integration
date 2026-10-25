@@ -7,8 +7,14 @@ from unittest.mock import patch
 import pytest
 from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
+from homeassistant.components.bluetooth import BluetoothChange, BluetoothServiceInfoBleak
+from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.soundboks.const import DOMAIN
 from custom_components.soundboks.protocol import (
+    ADVERTISED_SERVICE_UUID,
     FIRMWARE_UUID,
     INPUTS_UUID,
     POWER_UUID,
@@ -137,3 +143,48 @@ def fake_speaker() -> Iterator[FakeSpeaker]:
 
     with patch("custom_components.soundboks.client.establish_connection", establish_connection):
         yield speaker
+
+
+def make_service_info() -> BluetoothServiceInfoBleak:
+    return BluetoothServiceInfoBleak(
+        name=f"AppControl {NAME}",
+        address=ADDRESS,
+        rssi=-60,
+        manufacturer_data={},
+        service_data={},
+        service_uuids=[ADVERTISED_SERVICE_UUID],
+        source="local",
+        device=make_ble_device(),
+        advertisement=None,
+        connectable=True,
+        time=0,
+        tx_power=None,
+    )
+
+
+@pytest.fixture
+def mock_entry() -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ADDRESS,
+        title=f"SOUNDBOKS {NAME}",
+        data={CONF_ADDRESS: ADDRESS},
+    )
+
+
+async def setup_entry(hass: HomeAssistant, entry: MockConfigEntry) -> None:
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.soundboks.async_ble_device_from_address",
+        return_value=make_ble_device(),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+
+async def advertise(hass: HomeAssistant, entry: MockConfigEntry) -> None:
+    """The speaker shows up: as when HA's scanner hears it."""
+    entry.runtime_data.async_handle_advertisement(
+        make_service_info(), BluetoothChange.ADVERTISEMENT
+    )
+    await hass.async_block_till_done()

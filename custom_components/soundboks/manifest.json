@@ -1,0 +1,19 @@
+{
+  "domain": "soundboks",
+  "name": "SOUNDBOKS",
+  "bluetooth": [
+    {
+      "service_uuid": "f5c26570-64ec-4906-b998-6a7302879a2b",
+      "connectable": true
+    }
+  ],
+  "codeowners": ["@Roxxas96"],
+  "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
+  "documentation": "https://github.com/Roxxas96/ha-soundboks-integration",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Roxxas96/ha-soundboks-integration/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

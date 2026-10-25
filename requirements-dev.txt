@@ -1,2 +1,7 @@
 # Pins a matching homeassistant release (2026.10.3) and the pytest plugins HA's tests use.
 pytest-homeassistant-custom-component==0.13.374
+# Requirements of HA's usb component, which bluetooth depends on; the test toolkit doesn't
+# install component requirements. Keep in step with homeassistant/components/usb/manifest.json.
+aiousbwatcher==1.1.2
+serialx==1.11.0
+dbus-fast==5.0.22
