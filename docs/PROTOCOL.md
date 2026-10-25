@@ -10,7 +10,7 @@ official app is included in this project.
 ## Connection
 
 - The speaker advertises the service `f5c26570-64ec-4906-b998-6a7302879a2b`, with a local name
-  of `#` followed by its serial number (for example `#202047`).
+  of `AppControl #` followed by its serial number (for example `AppControl #202047`).
 - There is no pairing. Unless a PIN is set, anything that connects can read and write.
 - **Only one central can be connected at a time.** While Home Assistant is connected, phones can't
   connect, and the other way round. This is why the integration connects only briefly
@@ -75,5 +75,7 @@ nothing. Authentication lasts until the connection closes.
 
 ## Advertising while connected
 
-Not yet checked. Whether the speaker keeps advertising while another app is connected decides how
-long Home Assistant keeps showing it as on after the advertisements stop.
+The speaker **stops advertising while a central is connected** (observed: about 70
+advertisements in 10 s, then none as soon as a phone app connected). So, from the outside, "not
+advertising" means either off or busy with another app. Home Assistant keeps the last state for 5
+minutes after the advertisements stop, unless it turned the speaker off itself.
