@@ -1,6 +1,9 @@
 """The media player: power state, volume, active inputs."""
 
+from datetime import timedelta
+
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.media_player import (
     ATTR_INPUT_SOURCE,
     ATTR_MEDIA_VOLUME_LEVEL,
@@ -13,11 +16,11 @@ from homeassistant.components.media_player import (
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.soundboks.protocol import INPUTS_UUID, POWER_UUID, VOLUME_UUID
 
-from .conftest import FakeSpeaker, advertise, setup_entry
+from .conftest import FakeSpeaker, advertise, make_service_info, setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_bluetooth")
 
@@ -102,3 +105,19 @@ async def test_command_when_absent_raises_without_connecting(
         await call(hass, SERVICE_VOLUME_SET, **{ATTR_MEDIA_VOLUME_LEVEL: 0.5})
     assert raised.value.translation_key == "unreachable"
     assert fake_speaker.connect_count == 0
+
+
+async def test_grace_expiry_shows_off(
+    hass: HomeAssistant,
+    mock_entry: MockConfigEntry,
+    fake_speaker: FakeSpeaker,
+    freezer: FrozenDateTimeFactory,
+):
+    """Turned off at its button: no more adverts, and after the grace window it shows off."""
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    mock_entry.runtime_data.async_handle_unavailable(make_service_info())
+    freezer.tick(timedelta(minutes=6))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(ENTITY_ID).state == STATE_OFF

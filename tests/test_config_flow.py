@@ -22,6 +22,7 @@ pytestmark = pytest.mark.usefixtures("enable_bluetooth", "no_setup")
 def no_setup() -> Iterator[None]:
     with (
         patch("custom_components.soundboks.async_setup_entry", return_value=True),
+        patch("custom_components.soundboks.async_unload_entry", return_value=True),
         patch(
             "custom_components.soundboks.config_flow.async_ble_device_from_address",
             return_value=make_ble_device(),

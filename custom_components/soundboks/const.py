@@ -13,6 +13,9 @@ IDLE_TIMEOUT = 30.0  # seconds a command keeps the link open
 # The speaker stops advertising while any app is connected, so "not advertising" may only mean
 # busy: keep the last state this long before showing it off (see docs/PROTOCOL.md)
 PRESENCE_GRACE = timedelta(minutes=5)
+# An advertisement older than this doesn't count: it's a replay from before a restart, or the
+# speaker is busy. Commands and polls only try to connect within it (or on an open link).
+FRESH_ADVERTISEMENT = 15.0  # seconds
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,

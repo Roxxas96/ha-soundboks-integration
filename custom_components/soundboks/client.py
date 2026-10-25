@@ -31,6 +31,7 @@ from .protocol import (
     InvalidPinError,
     PinRequiredError,
     ProtocolError,
+    RebootIncompleteError,
     SoundProfile,
     SpeakerState,
     SpeakerUnreachableError,
@@ -53,6 +54,10 @@ UNREACHABLE_MESSAGE = (
 )
 CONNECT_ATTEMPTS = 2  # fail fast: the next poll retries anyway
 RESPONSE_TIMEOUT = 5.0
+# The auto-boot write drops the link; reconnecting right after it often fails, so the power-off
+# that completes a reboot is retried for a while
+REBOOT_ATTEMPTS = 5
+REBOOT_RETRY_DELAY = 3.0
 LINK_ERRORS = (BleakError, TimeoutError)
 
 
@@ -146,7 +151,15 @@ class SoundboksClient:
     async def reboot(self) -> None:
         """Auto-boot once, then power off: the speaker restarts by itself."""
         await self._run(self._power_write(AUTO_BOOT_ONCE), command=False)
-        await self.power_off()
+        for _ in range(REBOOT_ATTEMPTS):
+            await asyncio.sleep(REBOOT_RETRY_DELAY)
+            try:
+                await self.power_off()
+            except SpeakerUnreachableError:
+                _LOGGER.debug("Reconnect for the reboot's power-off failed, retrying")
+            else:
+                return
+        raise RebootIncompleteError("the speaker will restart at its next power-off instead of now")
 
     async def disconnect(self) -> None:
         async with self._lock:

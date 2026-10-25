@@ -15,6 +15,7 @@ from custom_components.soundboks.protocol import (
     Input,
     InvalidPinError,
     PinRequiredError,
+    RebootIncompleteError,
     SoundProfile,
     SpeakerState,
     SpeakerUnreachableError,
@@ -205,3 +206,20 @@ async def test_volume_notifications_forwarded(fake_speaker: FakeSpeaker):
     fake_speaker.notify(VOLUME_UUID, b"\x40")
     assert seen == [0x40]
     await client.disconnect()
+
+
+async def test_reboot_retries_reconnect(fake_speaker: FakeSpeaker):
+    fake_speaker.failing_connects_after_power_write = 2
+    client = make_client()
+    await client.reboot()
+    power_writes = [data for uuid, data in fake_speaker.writes if uuid == POWER_UUID]
+    assert power_writes == [b"\x01\x01", b"\x00"]
+
+
+async def test_reboot_reports_armed_restart(fake_speaker: FakeSpeaker):
+    fake_speaker.failing_connects_after_power_write = 100
+    client = make_client()
+    with pytest.raises(RebootIncompleteError):
+        await client.reboot()
+    power_writes = [data for uuid, data in fake_speaker.writes if uuid == POWER_UUID]
+    assert power_writes == [b"\x01\x01"]

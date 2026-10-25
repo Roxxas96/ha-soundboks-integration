@@ -7,7 +7,11 @@ from unittest.mock import patch
 import pytest
 from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
-from homeassistant.components.bluetooth import BluetoothChange, BluetoothServiceInfoBleak
+from homeassistant.components.bluetooth import (
+    MONOTONIC_TIME,
+    BluetoothChange,
+    BluetoothServiceInfoBleak,
+)
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -36,6 +40,12 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     return
 
 
+@pytest.fixture(autouse=True)
+def no_reboot_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reboot retries wait between reconnects; tests don't need to."""
+    monkeypatch.setattr("custom_components.soundboks.client.REBOOT_RETRY_DELAY", 0)
+
+
 def make_ble_device() -> BLEDevice:
     return BLEDevice(ADDRESS, NAME, None)
 
@@ -58,8 +68,12 @@ class FakeSpeaker:
     pin: str | None = None
     unreachable: bool = False
     drop_on_power_write: bool = True
+    failing_reads: set[str] = field(default_factory=set)
+    # Connects that fail right after a power write, as a speaker restarting its radio would
+    failing_connects_after_power_write: int = 0
     writes: list[tuple[str, bytes]] = field(default_factory=list)
     connect_count: int = 0
+    failing_connects: int = 0
     client: FakeBleakClient | None = None
 
     def set_pin(self, pin: str) -> None:
@@ -96,6 +110,8 @@ class FakeBleakClient:
 
     async def read_gatt_char(self, uuid: str) -> bytearray:
         self._check()
+        if uuid in self.speaker.failing_reads:
+            raise BleakError("read failed")
         return bytearray(self.speaker.values[uuid])
 
     async def write_gatt_char(self, uuid: str, data: bytes, response: bool = False) -> None:
@@ -111,6 +127,8 @@ class FakeBleakClient:
             return
         if not self.authenticated:
             raise BleakError("ATT error 0x81")
+        if uuid == POWER_UUID:
+            self.speaker.failing_connects = self.speaker.failing_connects_after_power_write
         if uuid == POWER_UUID and self.speaker.drop_on_power_write:
             await self._drop()
             raise BleakError("disconnected")
@@ -137,6 +155,9 @@ def fake_speaker() -> Iterator[FakeSpeaker]:
     async def establish_connection(client_class, device, name, disconnected_callback=None, **_):
         if speaker.unreachable:
             raise BleakError("device not found")
+        if speaker.failing_connects:
+            speaker.failing_connects -= 1
+            raise BleakError("device not found")
         speaker.connect_count += 1
         speaker.client = FakeBleakClient(speaker, disconnected_callback)
         return speaker.client
@@ -145,7 +166,8 @@ def fake_speaker() -> Iterator[FakeSpeaker]:
         yield speaker
 
 
-def make_service_info() -> BluetoothServiceInfoBleak:
+def make_service_info(age: float = 0.0) -> BluetoothServiceInfoBleak:
+    """An advertisement heard age seconds ago."""
     return BluetoothServiceInfoBleak(
         name=f"AppControl {NAME}",
         address=ADDRESS,
@@ -157,7 +179,7 @@ def make_service_info() -> BluetoothServiceInfoBleak:
         device=make_ble_device(),
         advertisement=None,
         connectable=True,
-        time=0,
+        time=MONOTONIC_TIME() - age,
         tx_power=None,
     )
 

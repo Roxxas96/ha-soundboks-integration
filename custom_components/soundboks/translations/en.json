@@ -65,6 +65,9 @@
     },
     "custom_profile": {
       "message": "Custom EQ can only be set from the SOUNDBOKS app for now."
+    },
+    "reboot_incomplete": {
+      "message": "The speaker didn't restart: it will restart the next time it is turned off instead. Try the reboot again."
     }
   },
   "entity": {

@@ -1,16 +1,18 @@
 """Setup, polling and presence, against the fake speaker."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.components.bluetooth import MONOTONIC_TIME, BluetoothChange
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.soundboks.const import CONF_PIN, PRESENCE_GRACE
-from custom_components.soundboks.protocol import POWER_UUID, VOLUME_UUID
+from custom_components.soundboks.protocol import FIRMWARE_UUID, POWER_UUID, VOLUME_UUID
 
 from .conftest import FakeSpeaker, advertise, make_service_info, setup_entry
 
@@ -182,3 +184,88 @@ async def test_unload_disconnects(
     assert await hass.config_entries.async_unload(mock_entry.entry_id)
     assert coordinator.client.is_connected is False
     assert mock_entry.state is ConfigEntryState.NOT_LOADED
+
+
+def later(seconds: float):
+    """Make the coordinator's clock run seconds ahead of the advertisements."""
+    now = MONOTONIC_TIME()
+    return patch(
+        "custom_components.soundboks.coordinator.MONOTONIC_TIME", return_value=now + seconds
+    )
+
+
+async def test_firmware_failure_keeps_state(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    fake_speaker.failing_reads.add(FIRMWARE_UUID)
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    assert coordinator.data is not None and coordinator.data.volume == 0x2D
+    assert coordinator.firmware is None
+
+
+async def test_poll_skipped_when_not_recently_seen(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    before, connects = coordinator.data, fake_speaker.connect_count
+    with later(60):
+        await coordinator.async_refresh()
+    assert fake_speaker.connect_count == connects
+    assert coordinator.data == before
+    assert coordinator.present is True  # still within the grace window
+
+
+async def test_command_fails_fast_when_not_recently_seen(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    connects = fake_speaker.connect_count
+    with later(60), pytest.raises(HomeAssistantError) as raised:
+        await mock_entry.runtime_data.async_set_volume(10)
+    assert raised.value.translation_key == "unreachable"
+    assert fake_speaker.connect_count == connects
+
+
+async def test_command_uses_open_link_without_adverts(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    """While HA holds the link the speaker doesn't advertise: commands must still go through."""
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    await coordinator.async_set_volume(10)
+    with later(20):
+        await coordinator.async_set_volume(20)
+    assert (VOLUME_UUID, b"\x14") in fake_speaker.writes
+    await coordinator.client.disconnect()
+
+
+async def test_stale_replay_does_not_mark_present(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    await setup_entry(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    coordinator.async_handle_advertisement(
+        make_service_info(age=3600), BluetoothChange.ADVERTISEMENT
+    )
+    await hass.async_block_till_done()
+    assert coordinator.present is False
+    assert fake_speaker.connect_count == 0
+
+
+async def test_reboot_incomplete_raises_specific_error(
+    hass: HomeAssistant,
+    mock_entry: MockConfigEntry,
+    fake_speaker: FakeSpeaker,
+):
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    fake_speaker.failing_connects_after_power_write = 100
+    with pytest.raises(HomeAssistantError) as raised:
+        await mock_entry.runtime_data.async_reboot()
+    assert raised.value.translation_key == "reboot_incomplete"

@@ -86,6 +86,10 @@ class UnsupportedSpeakerError(SoundboksError):
     """The speaker lacks the characteristics this integration needs."""
 
 
+class RebootIncompleteError(SoundboksError):
+    """Auto-boot was armed but the power-off didn't follow: the next power-off restarts."""
+
+
 class ProtocolError(SoundboksError):
     """The speaker sent bytes that don't match the expected layout."""
 
