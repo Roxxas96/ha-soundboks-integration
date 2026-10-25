@@ -1,0 +1,52 @@
+name: Bug report
+description: Something doesn't work with your speaker
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.4"
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: speaker
+    attributes:
+      label: Speaker model and firmware
+      description: The firmware is on the device page in Home Assistant, or in the SOUNDBOKS app.
+      placeholder: "firmware 2.4.2"
+  - type: dropdown
+    id: adapter
+    attributes:
+      label: Bluetooth adapter
+      options:
+        - Built-in or USB adapter on the Home Assistant host
+        - ESPHome Bluetooth proxy
+        - Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs
+      description: >
+        Enable debug logging for the integration (Settings → Devices & services → SOUNDBOKS →
+        ⋮ → Enable debug logging), reproduce the problem, then disable it and paste the log here.
+      render: text
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Attach the diagnostics file from the device page (the PIN is removed from it).
