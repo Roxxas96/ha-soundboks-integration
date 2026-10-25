@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # requirements-dev.txt: the test toolkit (pins homeassistant) and the usb packages copied from
+  # HA's usb manifest. Grouped so a Home Assistant bump arrives as one PR.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      home-assistant:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # .pre-commit-config.yaml hook revisions
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
