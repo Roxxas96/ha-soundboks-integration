@@ -16,6 +16,8 @@ PRESENCE_GRACE = timedelta(minutes=5)
 # An advertisement older than this doesn't count: it's a replay from before a restart, or the
 # speaker is busy. Commands and polls only try to connect within it (or on an open link).
 FRESH_ADVERTISEMENT = 15.0  # seconds
+# After HA powers the speaker off, adverts relayed while it shuts down are ignored this long
+POWER_OFF_QUIET = timedelta(seconds=5)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,

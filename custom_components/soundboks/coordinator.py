@@ -8,6 +8,7 @@ from homeassistant.components.bluetooth import (
     MONOTONIC_TIME,
     BluetoothChange,
     BluetoothServiceInfoBleak,
+    async_clear_advertisement_history,
     async_last_service_info,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -19,7 +20,13 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import SoundboksClient
-from .const import DOMAIN, FRESH_ADVERTISEMENT, POLL_INTERVAL, PRESENCE_GRACE
+from .const import (
+    DOMAIN,
+    FRESH_ADVERTISEMENT,
+    POLL_INTERVAL,
+    POWER_OFF_QUIET,
+    PRESENCE_GRACE,
+)
 from .protocol import (
     InvalidPinError,
     PinRequiredError,
@@ -53,6 +60,7 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
         self.present = False
         self.firmware: str | None = None
         self._cancel_grace: CALLBACK_TYPE | None = None
+        self._cancel_quiet: CALLBACK_TYPE | None = None
 
     @property
     def reachable(self) -> bool:
@@ -106,6 +114,8 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
         self.client.set_ble_device(service_info.device)
         if MONOTONIC_TIME() - service_info.time > FRESH_ADVERTISEMENT:
             return  # replayed from history: says nothing about now
+        if self._cancel_quiet is not None:
+            return  # relayed while the speaker we just turned off shuts down
         self._cancel_grace_timer()
         if not self.present:
             self.present = True
@@ -148,13 +158,35 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
 
     async def async_power_off(self) -> None:
         await self._command(self.client.power_off)
-        self._mark_absent()
+        self._turned_off()
 
     async def async_reboot(self) -> None:
         await self._command(self.client.reboot)
+        self._turned_off()
+
+    @callback
+    def _turned_off(self) -> None:
+        """HA turned the speaker off: absent now, and ready to see it come back.
+
+        It comes back with the very advertisement HA already holds, which HA wouldn't pass on, so
+        the history is cleared once the speaker has gone quiet.
+        """
         self._mark_absent()
+        self._cancel_quiet_timer()
+        self._cancel_quiet = async_call_later(self.hass, POWER_OFF_QUIET, self._quiet_over)
+
+    @callback
+    def _quiet_over(self, _now: object) -> None:
+        self._cancel_quiet = None
+        async_clear_advertisement_history(self.hass, self.address)
+
+    def _cancel_quiet_timer(self) -> None:
+        if self._cancel_quiet is not None:
+            self._cancel_quiet()
+            self._cancel_quiet = None
 
     async def async_shutdown(self) -> None:
+        self._cancel_quiet_timer()
         self._cancel_grace_timer()
         await super().async_shutdown()
 

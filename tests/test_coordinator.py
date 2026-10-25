@@ -8,6 +8,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.bluetooth import (
     MONOTONIC_TIME,
     BluetoothChange,
+    async_clear_advertisement_history,
     async_get_advertisement_callback,
 )
 from homeassistant.config_entries import ConfigEntryState
@@ -18,7 +19,14 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 from custom_components.soundboks.const import CONF_PIN, PRESENCE_GRACE
 from custom_components.soundboks.protocol import FIRMWARE_UUID, POWER_UUID, VOLUME_UUID
 
-from .conftest import FakeSpeaker, advertise, go_unavailable, make_service_info, setup_entry
+from .conftest import (
+    ADDRESS,
+    FakeSpeaker,
+    advertise,
+    go_unavailable,
+    make_service_info,
+    setup_entry,
+)
 
 pytestmark = pytest.mark.usefixtures("enable_bluetooth")
 
@@ -296,3 +304,55 @@ async def test_identical_adverts_keep_speaker_reachable(
         await mock_entry.runtime_data.async_set_volume(0x20)
     assert (VOLUME_UUID, b"\x20") in fake_speaker.writes
     await mock_entry.runtime_data.client.disconnect()
+
+
+async def turn_back_on(hass: HomeAssistant, entry: MockConfigEntry, freezer) -> None:
+    """Some seconds pass, then the speaker advertises exactly as it did before it went off."""
+    freezer.tick(timedelta(seconds=10))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    await advertise(hass, entry)
+
+
+async def test_back_on_after_ha_power_off(
+    hass: HomeAssistant,
+    mock_entry: MockConfigEntry,
+    fake_speaker: FakeSpeaker,
+    freezer: FrozenDateTimeFactory,
+):
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    await coordinator.async_power_off()
+    await turn_back_on(hass, mock_entry, freezer)
+    assert coordinator.present is True
+    await coordinator.async_set_volume(0x30)
+    assert (VOLUME_UUID, b"\x30") in fake_speaker.writes
+    await coordinator.client.disconnect()
+
+
+async def test_back_on_after_reboot(
+    hass: HomeAssistant,
+    mock_entry: MockConfigEntry,
+    fake_speaker: FakeSpeaker,
+    freezer: FrozenDateTimeFactory,
+):
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    await coordinator.async_reboot()
+    await turn_back_on(hass, mock_entry, freezer)
+    assert coordinator.present is True
+
+
+async def test_advert_right_after_power_off_ignored(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    """A last advertisement relayed as the speaker shuts down doesn't bring it back."""
+    await setup_entry(hass, mock_entry)
+    await advertise(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    await coordinator.async_power_off()
+    async_clear_advertisement_history(hass, ADDRESS)  # so the advert below is delivered
+    await advertise(hass, mock_entry)
+    assert coordinator.present is False
