@@ -1,6 +1,6 @@
 """Config flow: discovery, picking a speaker, PIN, reauth and reconfigure."""
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +19,8 @@ pytestmark = pytest.mark.usefixtures("enable_bluetooth", "no_setup")
 
 
 @pytest.fixture
-def no_setup() -> Iterator[None]:
+async def no_setup(hass: HomeAssistant) -> AsyncIterator[None]:
+    """Skip the integration's setup: only the flow is under test."""
     with (
         patch("custom_components.soundboks.async_setup_entry", return_value=True),
         patch("custom_components.soundboks.async_unload_entry", return_value=True),
@@ -29,6 +30,9 @@ def no_setup() -> Iterator[None]:
         ),
     ):
         yield
+        # Unload while setup is still stubbed: there is no runtime data to tear down
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            await hass.config_entries.async_unload(entry.entry_id)
 
 
 def discovered(*infos):
