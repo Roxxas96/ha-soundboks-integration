@@ -20,7 +20,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 
 from custom_components.soundboks.protocol import INPUTS_UUID, POWER_UUID, VOLUME_UUID
 
-from .conftest import FakeSpeaker, advertise, make_service_info, setup_entry
+from .conftest import FakeSpeaker, advertise, go_unavailable, setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_bluetooth")
 
@@ -116,7 +116,7 @@ async def test_grace_expiry_shows_off(
     """Turned off at its button: no more adverts, and after the grace window it shows off."""
     await setup_entry(hass, mock_entry)
     await advertise(hass, mock_entry)
-    mock_entry.runtime_data.async_handle_unavailable(make_service_info())
+    go_unavailable(hass, mock_entry)
     freezer.tick(timedelta(minutes=6))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()

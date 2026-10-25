@@ -8,6 +8,7 @@ from homeassistant.components.bluetooth import (
     MONOTONIC_TIME,
     BluetoothChange,
     BluetoothServiceInfoBleak,
+    async_last_service_info,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS
@@ -52,7 +53,6 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
         self.present = False
         self.firmware: str | None = None
         self._cancel_grace: CALLBACK_TYPE | None = None
-        self._last_seen: float | None = None  # monotonic time of the last fresh advertisement
 
     @property
     def reachable(self) -> bool:
@@ -63,9 +63,10 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
         """
         if self.client.is_connected:
             return True
-        return (
-            self._last_seen is not None and MONOTONIC_TIME() - self._last_seen < FRESH_ADVERTISEMENT
-        )
+        # HA's history, not our callback: callbacks only fire when an advertisement changes,
+        # and the speaker repeats the same one
+        last = async_last_service_info(self.hass, self.address, connectable=True)
+        return last is not None and MONOTONIC_TIME() - last.time < FRESH_ADVERTISEMENT
 
     async def _async_update_data(self) -> SpeakerState | None:
         if not self.present or not self.reachable:
@@ -105,7 +106,6 @@ class SoundboksCoordinator(DataUpdateCoordinator[SpeakerState | None]):
         self.client.set_ble_device(service_info.device)
         if MONOTONIC_TIME() - service_info.time > FRESH_ADVERTISEMENT:
             return  # replayed from history: says nothing about now
-        self._last_seen = service_info.time
         self._cancel_grace_timer()
         if not self.present:
             self.present = True

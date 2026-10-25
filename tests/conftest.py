@@ -9,8 +9,9 @@ from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
 from homeassistant.components.bluetooth import (
     MONOTONIC_TIME,
-    BluetoothChange,
     BluetoothServiceInfoBleak,
+    async_clear_advertisement_history,
+    async_get_advertisement_callback,
 )
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
@@ -205,8 +206,16 @@ async def setup_entry(hass: HomeAssistant, entry: MockConfigEntry) -> None:
 
 
 async def advertise(hass: HomeAssistant, entry: MockConfigEntry) -> None:
-    """The speaker shows up: as when HA's scanner hears it."""
-    entry.runtime_data.async_handle_advertisement(
-        make_service_info(), BluetoothChange.ADVERTISEMENT
-    )
+    """The speaker shows up, through HA's Bluetooth manager like a real advertisement.
+
+    Going through the manager matters: it keeps the advertisement history the integration
+    reads, and skips integration callbacks for repeated identical advertisements.
+    """
+    async_get_advertisement_callback(hass)(make_service_info())
     await hass.async_block_till_done()
+
+
+def go_unavailable(hass: HomeAssistant, entry: MockConfigEntry) -> None:
+    """HA stopped hearing the speaker: it drops the history first, then calls back."""
+    async_clear_advertisement_history(hass, ADDRESS)
+    entry.runtime_data.async_handle_unavailable(make_service_info())

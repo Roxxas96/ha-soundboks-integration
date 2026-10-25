@@ -5,7 +5,11 @@ from unittest.mock import patch
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.components.bluetooth import MONOTONIC_TIME, BluetoothChange
+from homeassistant.components.bluetooth import (
+    MONOTONIC_TIME,
+    BluetoothChange,
+    async_get_advertisement_callback,
+)
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -14,7 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 from custom_components.soundboks.const import CONF_PIN, PRESENCE_GRACE
 from custom_components.soundboks.protocol import FIRMWARE_UUID, POWER_UUID, VOLUME_UUID
 
-from .conftest import FakeSpeaker, advertise, make_service_info, setup_entry
+from .conftest import FakeSpeaker, advertise, go_unavailable, make_service_info, setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_bluetooth")
 
@@ -145,7 +149,7 @@ async def test_unavailable_respects_grace(
     await setup_entry(hass, mock_entry)
     await advertise(hass, mock_entry)
     coordinator = mock_entry.runtime_data
-    coordinator.async_handle_unavailable(make_service_info())
+    go_unavailable(hass, mock_entry)
     freezer.tick(timedelta(minutes=4))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -165,7 +169,7 @@ async def test_advertisement_cancels_grace(
     await setup_entry(hass, mock_entry)
     await advertise(hass, mock_entry)
     coordinator = mock_entry.runtime_data
-    coordinator.async_handle_unavailable(make_service_info())
+    go_unavailable(hass, mock_entry)
     await advertise(hass, mock_entry)
     freezer.tick(timedelta(minutes=6))
     async_fire_time_changed(hass)
@@ -269,3 +273,26 @@ async def test_reboot_incomplete_raises_specific_error(
     with pytest.raises(HomeAssistantError) as raised:
         await mock_entry.runtime_data.async_reboot()
     assert raised.value.translation_key == "reboot_incomplete"
+
+
+async def test_identical_adverts_keep_speaker_reachable(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, fake_speaker: FakeSpeaker
+):
+    """HA only calls integration callbacks when an advert changes; the speaker repeats itself.
+
+    Goes through HA's real Bluetooth manager rather than calling the coordinator directly.
+    """
+    await setup_entry(hass, mock_entry)
+    inject = async_get_advertisement_callback(hass)
+    inject(make_service_info())
+    await hass.async_block_till_done()
+    assert mock_entry.runtime_data.present is True
+    # 20 s later: the same advert keeps arriving, but no callback reaches the integration
+    repeat = make_service_info()
+    repeat.time += 20
+    inject(repeat)
+    await hass.async_block_till_done()
+    with later(20):
+        await mock_entry.runtime_data.async_set_volume(0x20)
+    assert (VOLUME_UUID, b"\x20") in fake_speaker.writes
+    await mock_entry.runtime_data.client.disconnect()
