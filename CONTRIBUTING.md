@@ -47,9 +47,19 @@ a test.
 
 ## Releasing
 
+A release is a version tag. `cz bump` picks the next version from the commit types since the last
+tag (`fix:` → patch, `feat:` → minor), writes it into `manifest.json`, adds its section to
+`CHANGELOG.md`, commits, and tags it:
+
 ```bash
-cz bump        # bumps the version in manifest.json, updates CHANGELOG.md, tags vX.Y.Z
+cz bump                       # or: cz bump --prerelease rc   for a release candidate (v0.2.0-rc.0)
 git push --follow-tags
 ```
 
-Then create a GitHub release from the tag: that's what HACS offers to users.
+Pushing the tag runs the whole CI. Once lint, tests, hassfest and the HACS validation pass, the
+`release` job checks the tag matches `manifest.json`, zips `custom_components/soundboks`, and
+creates the GitHub Release with that zip and the new `CHANGELOG.md` section as notes. Release
+candidates are marked as prereleases, which HACS only offers to users who enabled beta versions.
+
+If CI fails on a tag, fix the problem on `main` and release the next version: don't move a tag
+that was pushed.

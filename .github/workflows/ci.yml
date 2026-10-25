@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # Releases (v0.2.0) and release candidates (v0.2.0-rc.0): see CONTRIBUTING.md
+    tags: [v*.*.*]
   pull_request:
 
 permissions:
@@ -42,3 +44,48 @@ jobs:
           category: integration
           # No brand images submitted to home-assistant/brands yet
           ignore: brands
+
+  # Runs on a version tag once every check above passed: a release is just `cz bump` + push.
+  release:
+    needs: [lint, tests, hassfest, hacs]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # cz bump writes the version into manifest.json and tags it; a hand-made tag that skips it
+      # would ship a manifest claiming another version.
+      - name: Check the tag matches manifest.json
+        run: |
+          manifest="v$(jq -r .version custom_components/soundboks/manifest.json)"
+          if [ "$manifest" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag is $GITHUB_REF_NAME but manifest.json says $manifest: release with cz bump"
+            exit 1
+          fi
+
+      # HACS installs this zip (hacs.json: zip_release), so users get exactly the tested files
+      - name: Package the integration
+        run: |
+          cd custom_components/soundboks
+          zip -r "$GITHUB_WORKSPACE/soundboks.zip" . -x '__pycache__/*'
+
+      # The commits are on main, not in PRs, so GitHub's generated notes would be empty: use the
+      # section cz bump wrote to CHANGELOG.md
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          awk -v header="## $GITHUB_REF_NAME " \
+            'index($0, header) == 1 { found = 1; next } found && /^## / { exit } found' \
+            CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::no '## $GITHUB_REF_NAME' section in CHANGELOG.md"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          files: soundboks.zip
