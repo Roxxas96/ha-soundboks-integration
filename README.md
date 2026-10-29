@@ -19,6 +19,7 @@ One device per speaker, with:
 | Stereo role (select) | Mono, Left or Right |
 | Active inputs (sensor) | What is playing right now, e.g. "AUX, Bluetooth" |
 | Reboot (button) | Restarts the speaker |
+| Battery (sensor) | Only when a battery sensor is set in [Options](#options): mirrors it |
 
 The speaker **can't wake itself remotely**: its Bluetooth radio is off along with it. Turn it on
 by hand, and Home Assistant shows it as on within seconds. If you have something that can press its
@@ -72,6 +73,9 @@ nothing changes until you set them.
   triggers a device pressing its power button. The media player's power button then runs it. The
   media player only shows "on" once the speaker is actually up and advertising, usually a few
   seconds later.
+- **Battery sensor**: this speaker doesn't report its battery over Bluetooth. If you measure it
+  another way, pick that sensor here and the speaker's device gets a **Battery** sensor that
+  follows it. It keeps its value while the speaker is off.
 
 ## How the connection is shared
 
