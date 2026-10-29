@@ -6,6 +6,9 @@ from homeassistant.const import Platform
 
 DOMAIN = "soundboks"
 CONF_PIN = "pin"
+# Options: a script or button that turns the speaker on, and a battery sensor to show on its device
+CONF_TURN_ON_ENTITY = "turn_on_entity"
+CONF_BATTERY_ENTITY = "battery_entity"
 MANUFACTURER = "SOUNDBOKS ApS"
 
 POLL_INTERVAL = timedelta(seconds=30)

@@ -187,11 +187,16 @@ def make_service_info(age: float = 0.0) -> BluetoothServiceInfoBleak:
 
 @pytest.fixture
 def mock_entry() -> MockConfigEntry:
+    return make_entry()
+
+
+def make_entry(**options: str) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
         unique_id=ADDRESS,
         title=f"SOUNDBOKS {NAME}",
         data={CONF_ADDRESS: ADDRESS},
+        options=options,
     )
 
 

@@ -14,14 +14,15 @@ One device per speaker, with:
 
 | Entity | What it does |
 |---|---|
-| Media player | On/off state, volume (set, up, down), **turn off**, and the active inputs as its source |
+| Media player | On/off state, volume (set, up, down), **turn off** (and **turn on** when a turn-on action is set), and the active inputs as its source |
 | Sound profile (select) | Power, Bass+ or Indoor. Shows "Custom" when a custom EQ was set from the app |
 | Stereo role (select) | Mono, Left or Right |
 | Active inputs (sensor) | What is playing right now, e.g. "AUX, Bluetooth" |
 | Reboot (button) | Restarts the speaker |
 
-The speaker **can't be turned on remotely**: its Bluetooth radio is off along with it. Turn it on
-by hand, and Home Assistant shows it as on within seconds.
+The speaker **can't wake itself remotely**: its Bluetooth radio is off along with it. Turn it on
+by hand, and Home Assistant shows it as on within seconds. If you have something that can press its
+power button for you, set it as the **turn-on action** (see [Options](#options)).
 
 ## Supported speakers
 
@@ -61,6 +62,16 @@ then restart Home Assistant.
 
 To change the PIN later, open the integration's ⋮ menu → **Reconfigure**. If you change it from
 the app, Home Assistant asks for the new one.
+
+## Options
+
+Open the integration's **Configure** to set optional helpers. They're blank by default, and
+nothing changes until you set them.
+
+- **Turn-on action**: any script or button entity that turns your speaker on, for example one that
+  triggers a device pressing its power button. The media player's power button then runs it. The
+  media player only shows "on" once the speaker is actually up and advertising, usually a few
+  seconds later.
 
 ## How the connection is shared
 

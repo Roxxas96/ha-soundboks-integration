@@ -8,11 +8,19 @@ from homeassistant.components.bluetooth import (
     async_ble_device_from_address,
     async_discovered_service_info,
 )
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import callback
+from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 
 from .client import SoundboksClient
-from .const import CONF_PIN, DOMAIN
+from .const import CONF_BATTERY_ENTITY, CONF_PIN, CONF_TURN_ON_ENTITY, DOMAIN
 from .protocol import (
     ADVERTISED_SERVICE_UUID,
     InvalidPinError,
@@ -32,6 +40,11 @@ def speaker_name(info: BluetoothServiceInfoBleak) -> str:
 
 class SoundboksConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> SoundboksOptionsFlow:
+        return SoundboksOptionsFlow()
 
     def __init__(self) -> None:
         self._address = ""
@@ -187,3 +200,28 @@ class SoundboksConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required(CONF_ADDRESS): vol.In(choices)}),
             errors=errors,
         )
+
+
+class SoundboksOptionsFlow(OptionsFlowWithReload):
+    """Optional helpers from outside the speaker: something that turns it on, a battery sensor."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        options = self.config_entry.options
+        # Optional with a suggested value, not a default: clearing a field removes the option
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_TURN_ON_ENTITY,
+                    description={"suggested_value": options.get(CONF_TURN_ON_ENTITY)},
+                ): EntitySelector(EntitySelectorConfig(domain=["script", "button"])),
+                vol.Optional(
+                    CONF_BATTERY_ENTITY,
+                    description={"suggested_value": options.get(CONF_BATTERY_ENTITY)},
+                ): EntitySelector(
+                    EntitySelectorConfig(domain="sensor", device_class=SensorDeviceClass.BATTERY)
+                ),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

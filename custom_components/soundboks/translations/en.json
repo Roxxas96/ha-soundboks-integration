@@ -68,6 +68,9 @@
     },
     "reboot_incomplete": {
       "message": "The speaker didn't restart: it will restart the next time it is turned off instead. Try the reboot again."
+    },
+    "turn_on_entity_missing": {
+      "message": "The turn-on action {entity_id} doesn't exist. Pick another in the integration's settings."
     }
   },
   "entity": {
@@ -98,6 +101,22 @@
     "button": {
       "reboot": {
         "name": "Reboot"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Extras",
+        "description": "Optional helpers for things the speaker can't do over Bluetooth.",
+        "data": {
+          "turn_on_entity": "Turn-on action",
+          "battery_entity": "Battery sensor"
+        },
+        "data_description": {
+          "turn_on_entity": "A script or button that turns the speaker on, for example one that triggers a device pressing its power button. The media player's power button then turns the speaker on.",
+          "battery_entity": "A battery sensor for this speaker, measured some other way. It's shown on the speaker's device."
+        }
       }
     }
   }
